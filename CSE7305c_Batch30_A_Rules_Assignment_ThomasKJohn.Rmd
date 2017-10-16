@@ -1,0 +1,88 @@
+---
+title: "Association Rules "
+author: " "
+date: "July 21, 2017"
+output: html_document
+---
+# Problem 3 - Assignment
+### Association Rules for "Flight Delay" dataset: Generate the rules and identify the patterns. 
+
+```{r}
+rm(list = ls(all = TRUE))
+```
+
+1. Read the data into R
+
+```{r, echo=T}
+setwd("I:/DATA-SCIENCE/Insofe/Assignments/AssociationRules")
+flight.data = read.csv("FlightDelays.csv", header = TRUE)
+```
+
+
+2. Look at the summary of all the variables and convert the following variables as factors 
+        + Weather 
+        + DAY_WEEK 
+        + Flight Status
+```{r}
+summary(flight.data)
+str(flight.data$CRS_DEP_TIME)
+
+flight.data$Weather = as.factor(as.character(flight.data$Weather))
+flight.data$DAY_WEEK = as.factor(as.character(flight.data$DAY_WEEK))
+flight.data$Flight.Status = as.factor(as.character(flight.data$Flight.Status))
+
+str(flight.data)
+```
+
+3. Bin the numeric variable 'CRS_DEP_TIME' into 4 bins as follows: If time is between 6 AM to 12 noon code as 1 and If the time is between 2 , etc.
+```{r}
+flight.data$CRS_DEP_TIME = cut(flight.data$CRS_DEP_TIME, c(1159,1759,2359,559), labels = c(1,2,3))
+summary(flight.data)
+
+```
+
+4. Convert the data frame in a transactions object. Look at the first 6 transactions to understand how 'arules' library requires data to be transformed. Use the below R code to view the transactions data 
+```{r}
+library(arules)
+flight.transaction = as(flight.data, "transactions")
+
+image(flight.transaction)
+itemFrequency(flight.transaction)
+```
+
+5. Apply 'arules' algorithm and play with various support, lift and confidence values.
+```{r}
+rulesA<-apriori(flight.transaction, parameter = list(support = 0.1, conf = 0.2, target = 'rules', minlen = 3))
+```
+
+6. Inspect all the rules.
+```{r}
+inspect(rulesA[1:10])
+```
+
+7. Filter the rules with specific LHS and RHS conditions 
+E.g.; Filter the rules with Flighstatus=0
+```{r}
+rules.filterA = sort(subset(rulesA, subset = rhs %in% 
+                        c("Flight.Status=0", "Flight.Status=1")), by=c("support", "confidence"))
+rules.sorted = sort(rulesA, by="lift")
+inspect(rules.sorted)
+```
+
+8. Filter redundant rules if any
+```{r}
+subset.matrix <- is.subset(rules.sorted, rules.sorted,sparse = FALSE)
+subset.matrix[lower.tri(subset.matrix, diag=T)] <- NA
+redundant <- colSums(subset.matrix, na.rm=T) >= 1
+which(redundant)
+
+rules.pruned <- rules.sorted[!redundant]
+inspect(rules.pruned)
+```
+
+9. Pot and visualize the rules
+```{r}
+library(arulesViz)
+plot(rules.pruned)
+
+```
